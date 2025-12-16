@@ -1,111 +1,90 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useEffect } from 'react';
 import Icon from './Icon';
 
-interface GalleryItem {
-  url: string;
-  name: string;
-  author: string;
-  date: string;
-  type: 'image' | 'video';
-  mimeType?: string;
-}
-
 interface ImageGalleryModalProps {
-  items: GalleryItem[];
+  items: { url: string; name: string; type: 'image' | 'video' }[];
   initialIndex: number;
   onExit: () => void;
 }
 
 const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ items, initialIndex, onExit }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-
-  const currentItem = items[currentIndex];
-  const isVideo = currentItem?.type === 'video';
-
-  const handleClose = useCallback(() => {
-    setIsAnimatingOut(true);
-    setTimeout(() => onExit(), 300); // Corresponds to lightbox-fade-out duration
-  }, [onExit]);
-
-  const goToPrevious = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex(prevIndex => (prevIndex === 0 ? items.length - 1 : prevIndex - 1));
-  }, [items.length]);
-
-  const goToNext = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex(prevIndex => (prevIndex === items.length - 1 ? 0 : prevIndex + 1));
-  }, [items.length]);
+  const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-      if (items.length > 1) {
-        if (e.key === 'ArrowRight') goToNext();
-        if (e.key === 'ArrowLeft') goToPrevious();
-      }
+      if (e.key === 'Escape') onExit();
+      if (e.key === 'ArrowRight') handleNext();
+      if (e.key === 'ArrowLeft') handlePrev();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClose, goToNext, goToPrevious, items.length]);
+  }, [currentIndex]);
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % items.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+  };
+
+  const currentItem = items[currentIndex];
 
   if (!currentItem) return null;
 
   return (
-    <div
-      className={`fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4 ${isAnimatingOut ? 'animate-lightbox-fade-out' : 'animate-lightbox-fade-in'}`}
-      onClick={handleClose}
-    >
-      {/* Media Content */}
-      {isVideo ? (
-        <video
-          key={currentItem.url}
-          src={currentItem.url}
-          controls
-          autoPlay
-          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          onClick={e => e.stopPropagation()}
-        >
-          Your browser does not support the video tag.
-        </video>
-      ) : (
-        <img
-          src={currentItem.url}
-          alt={currentItem.name}
-          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          onClick={e => e.stopPropagation()}
-        />
-      )}
-      
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in">
       {/* Close Button */}
       <button
-        onClick={handleClose}
-        className="absolute top-4 right-4 text-white text-4xl leading-none font-bold hover:text-gray-300"
-        aria-label="Close image viewer"
+        onClick={onExit}
+        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
       >
-        &times;
+        <Icon name="x" className="w-6 h-6" />
       </button>
 
       {/* Navigation Buttons */}
       {items.length > 1 && (
         <>
           <button
-            onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/40 text-white rounded-full hover:bg-black/60 transition-all"
-            aria-label="Previous image"
+            onClick={handlePrev}
+            className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors group"
           >
-            <Icon name="chevron-left" className="w-8 h-8"/>
+            <Icon name="chevron-left" className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <button
-            onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/40 text-white rounded-full hover:bg-black/60 transition-all"
-            aria-label="Next image"
+            onClick={handleNext}
+            className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors group"
           >
-            <Icon name="chevron-right" className="w-8 h-8"/>
+            <Icon name="chevron-right" className="w-6 h-6 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </>
       )}
+
+      {/* Content */}
+      <div className="w-full max-w-5xl h-[80vh] flex flex-col items-center justify-center px-12">
+        <div className="relative w-full h-full flex items-center justify-center">
+          {currentItem.type === 'image' ? (
+            <img
+              src={currentItem.url}
+              alt={currentItem.name}
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+            />
+          ) : (
+            <video
+              src={currentItem.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-full shadow-2xl rounded-lg"
+            />
+          )}
+        </div>
+
+        <div className="mt-4 text-center">
+          <p className="text-white font-medium text-lg">{currentItem.name}</p>
+          <p className="text-white/60 text-sm">{currentIndex + 1} of {items.length}</p>
+        </div>
+      </div>
     </div>
   );
 };

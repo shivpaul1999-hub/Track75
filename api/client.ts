@@ -11,6 +11,18 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
 }
 
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 export async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   // 1. Prepare Headers (Auth)
   const token = getAuthToken();
@@ -31,10 +43,10 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
   if (USE_MOCK_API) {
     console.groupCollapsed(`[Mock API] ${options.method || 'GET'} ${url}`);
     console.log('Payload:', options.body ? JSON.parse(options.body as string) : 'None');
-    
+
     // Simulate network delay (300-600ms)
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 300)); 
-    
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 300));
+
     try {
       const response = await handleMockRequest<T>(url, options.method || 'GET', options.body);
       console.log('Response:', response);
@@ -43,7 +55,8 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
     } catch (error: any) {
       console.error('Error:', error);
       console.groupEnd();
-      throw new Error(error.message || 'Mock API Error');
+      // Wrap mock errors in ApiError for consistency
+      throw new ApiError(error.message || 'Mock API Error', 500);
     }
   } else {
     // Real Fetch Implementation
@@ -57,20 +70,28 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
       if (response.status === 401) {
         clearAuthToken();
         if (!window.location.pathname.includes('login')) {
-           window.location.reload(); 
+          // Dispatch event or callback could be better, but reload works for now
+          window.location.reload();
         }
-        throw new Error('Unauthorized');
+        throw new ApiError('Unauthorized', 401);
       }
 
       if (!response.ok) {
-        const errorText = await response.text();
         let errorMessage = `API Error: ${response.status}`;
+        let errorData = null;
         try {
+          const errorText = await response.text();
+          try {
             const errorJson = JSON.parse(errorText);
+            errorData = errorJson;
             if (errorJson.message) errorMessage = errorJson.message;
             else if (errorJson.error) errorMessage = errorJson.error;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
         } catch (e) { /* ignore */ }
-        throw new Error(errorMessage);
+
+        throw new ApiError(errorMessage, response.status, errorData);
       }
 
       // Handle 204 No Content
@@ -80,8 +101,12 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
 
       return await response.json();
     } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
       console.error(`[API Request Failed] ${url}`, error);
-      throw error;
+      // Network errors (fetch failed) typically don't have a status code, so we use 0 or 503
+      throw new ApiError('Network Error: Failed to connect to server', 0);
     }
   }
 }

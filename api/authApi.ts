@@ -7,14 +7,14 @@ export async function login(credentials: { email: string; password?: string }): 
     method: 'POST',
     body: JSON.stringify(credentials),
   });
-  
+
   if (data.token) {
     setAuthToken(data.token);
   }
   return data;
 }
 
-export async function register(data: { name: string; email: string; password?: string }): Promise<{ token: string; user: User }> {
+export async function register(data: { name: string; email: string; password?: string; organizationName?: string }): Promise<{ token: string; user: User }> {
   const response = await request<{ token: string; user: User }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
