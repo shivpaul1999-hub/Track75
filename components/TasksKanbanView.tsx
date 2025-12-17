@@ -1,28 +1,36 @@
+
 import React, { useState, useMemo } from 'react';
-import { FeedEntry, EntryType, User, TrackPriority } from '../types';
+import { FeedEntry, EntryType, User } from '../types';
 import Icon from './Icon';
 
 interface TasksKanbanViewProps {
-    entries: FeedEntry[];
-    onUpdateEntry: (entry: FeedEntry) => void;
-    users: User[];
+  entries: FeedEntry[];
+  onUpdateEntry: (entry: FeedEntry) => void;
+  users: User[];
 }
 
 const WORKFLOW_STAGES = ['Backlog', 'To Do', 'In Progress', 'In Review', 'In QA', 'Done'];
 const TASK_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 const getPriorityDetails = (chips: string[] = []): { name: string; badgeClasses: string; } => {
-    // Try to find explicit priority chip first, otherwise check if chip matches one of our priorities
-    const priority = chips.find(chip => TASK_PRIORITIES.includes(chip)) || 'Low';
-
-    switch (priority) {
-        case 'Critical': return { name: priority, badgeClasses: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900' };
-        case 'High': return { name: priority, badgeClasses: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-900' };
-        case 'Medium': return { name: priority, badgeClasses: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900' };
-        case 'Low': return { name: priority, badgeClasses: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-900' };
-        default: return { name: 'Low', badgeClasses: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700' };
-    }
+  const priority = chips.find(chip => TASK_PRIORITIES.includes(chip)) || 'Low';
+  switch (priority) {
+    case 'Critical': return { name: priority, badgeClasses: 'bg-red-100 text-red-800' };
+    case 'High': return { name: priority, badgeClasses: 'bg-orange-100 text-orange-800' };
+    case 'Medium': return { name: priority, badgeClasses: 'bg-yellow-100 text-yellow-800' };
+    case 'Low': return { name: priority, badgeClasses: 'bg-green-100 text-green-800' };
+    default: return { name: 'Low', badgeClasses: 'bg-green-100 text-green-800' };
+  }
 };
+
+const getEntryTypeDetails = (type: string): { name: string; badgeClasses: string; } => {
+    switch(type) {
+        case EntryType.TASK: return { name: 'Task', badgeClasses: 'bg-sky-100 text-sky-800' };
+        case EntryType.PRIORITY_TASK: return { name: 'Priority Task', badgeClasses: 'bg-purple-100 text-purple-800' };
+        case EntryType.CHECKLIST_TODO: return { name: 'Checklist', badgeClasses: 'bg-teal-100 text-teal-800' };
+        default: return { name: 'Task', badgeClasses: 'bg-sky-100 text-sky-800' };
+    }
+}
 
 const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -34,16 +42,16 @@ const formatDate = (dateString?: string) => {
 
 const KanbanCard: React.FC<{ entry: FeedEntry; onDragStart: (e: React.DragEvent<HTMLDivElement>, entryId: number) => void; onUpdateEntry: (entry: FeedEntry) => void; users: User[] }> = ({ entry, onDragStart, onUpdateEntry, users }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    // Use optional chaining for safety
-    const assignee = entry.taskAssigneeId ? users?.find(u => u.id === entry.taskAssigneeId) : null;
-
+    const assignee = entry.taskAssigneeId ? users.find(u => u.id === entry.taskAssigneeId) : null;
+    
     const { badgeClasses: priorityBadgeClasses, name: priorityName } = getPriorityDetails(entry.chips);
+    const { badgeClasses: typeBadgeClasses, name: typeName } = getEntryTypeDetails(entry.type);
 
     const [title, ...descriptionParts] = entry.content.split('\n');
     const description = descriptionParts.join('\n').trim();
 
     const handleSubtaskToggle = (subtaskId: number) => {
-        const updatedSubtasks = entry.subtasks?.map(subtask =>
+        const updatedSubtasks = entry.subtasks?.map(subtask => 
             subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
         );
         onUpdateEntry({ ...entry, subtasks: updatedSubtasks });
@@ -53,54 +61,60 @@ const KanbanCard: React.FC<{ entry: FeedEntry; onDragStart: (e: React.DragEvent<
         <div
             draggable
             onDragStart={(e) => onDragStart(e, entry.id)}
-            className="group relative bg-white dark:bg-dark-card p-3 rounded-xl border border-gray-200 dark:border-dark-elevated shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing mb-3 transition-all duration-200 hover:-translate-y-0.5"
+            className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing mb-3"
         >
-            {/* Drag Handle Indicator */}
-            {/* Drag Handle Indicator */}
-            <div className="absolute top-3 right-3 text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-500 dark:hover:text-gray-400">
-                <Icon name="dots-vertical" className="w-5 h-5" />
+            <div className="flex flex-wrap gap-2 mb-2">
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${typeBadgeClasses}`}>{typeName}</span>
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${priorityBadgeClasses}`}>{priorityName}</span>
             </div>
 
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${priorityBadgeClasses}`}>{priorityName}</span>
+            <h4 className="font-bold text-gray-800 text-sm leading-tight mb-1">{title}</h4>
+            {description && <p className="text-xs text-gray-600 mt-1 line-clamp-2">{description}</p>}
+            
+            {entry.subtasks && entry.subtasks.length > 0 && (
+                <div className="mt-3">
+                    <button onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-between items-center text-xs text-gray-500 font-semibold">
+                        <span>Subtasks ({entry.subtasks.filter(s => s.completed).length}/{entry.subtasks.length})</span>
+                        <Icon name="chevron-down" className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isExpanded && (
+                        <div className="mt-2 space-y-1.5 pl-1 animate-fade-in">
+                            {entry.subtasks.map(subtask => (
+                                <div key={subtask.id} className="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={subtask.completed}
+                                        onChange={() => handleSubtaskToggle(subtask.id)}
+                                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary-focus"
+                                    />
+                                    <label className={`ml-2 text-xs ${subtask.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                                        {subtask.text}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
+            )}
 
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{title}</h4>
-
-                {description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{description}</p>
-                )}
-            </div>
-
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-dark-elevated">
-                <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center space-x-3 text-xs text-gray-500">
                     {entry.dueDate && (
-                        <div className={`flex items-center gap-1 ${new Date(entry.dueDate) < new Date() ? 'text-red-500 font-medium' : ''}`}>
-                            <Icon name="task" className="w-3.5 h-3.5" />
-                            {formatDate(entry.dueDate)}
-                        </div>
+                        <span className="flex items-center font-medium">
+                            <Icon name="task" className="w-4 h-4 mr-1"/>{formatDate(entry.dueDate)}
+                        </span>
                     )}
-                    <div className="flex items-center gap-1">
-                        <Icon name="comment" className="w-3.5 h-3.5" />
-                        {entry.comments?.length || 0}
-                    </div>
+                     <span className="flex items-center"><Icon name="comment" className="w-4 h-4 mr-1"/>{entry.comments?.length || 0}</span>
                 </div>
-
-                {/* Assignee Avatar */}
-                <div className="flex -space-x-2">
-                    {assignee ? (
-                        assignee.avatarUrl ? (
-                            <img src={assignee.avatarUrl} alt={assignee.name} className="w-6 h-6 rounded-full border-2 border-white dark:border-dark-card object-cover" title={assignee.name} />
+                {assignee && (
+                     <div title={assignee.name}>
+                        {assignee.avatarUrl ? (
+                            <img src={assignee.avatarUrl} alt={assignee.name} className="w-6 h-6 rounded-full" />
                         ) : (
-                            <div className="w-6 h-6 rounded-full bg-primary text-white border-2 border-white dark:border-dark-card flex items-center justify-center text-[10px] font-bold" title={assignee.name}>{assignee.initials}</div>
-                        )
-                    ) : (
-                        <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-elevated border-2 border-white dark:border-dark-card flex items-center justify-center text-gray-400">
-                            <Icon name="user" className="w-3 h-3" />
-                        </div>
-                    )}
-                </div>
+                            <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center font-bold text-[10px]">{assignee.initials}</div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -108,105 +122,105 @@ const KanbanCard: React.FC<{ entry: FeedEntry; onDragStart: (e: React.DragEvent<
 
 
 const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({ entries, onUpdateEntry, users }) => {
-    const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
+  const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
 
-    const columns = useMemo(() => {
-        const grouped: { [key: string]: FeedEntry[] } = {};
-        WORKFLOW_STAGES.forEach(stage => {
-            grouped[stage] = [];
-        });
-        entries.forEach(entry => {
-            // Find existing stage chip or default to Backlog
-            const stage = entry.chips?.find(chip => WORKFLOW_STAGES.includes(chip));
-            if (stage && grouped[stage]) {
-                grouped[stage].push(entry);
-            } else {
-                // If it's a task type but has no stage chip, put it in Backlog
-                grouped['Backlog'].push(entry);
-            }
-        });
-        return grouped;
-    }, [entries]);
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, entryId: number) => {
-        e.dataTransfer.setData('entryId', entryId.toString());
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, stage: string) => {
-        e.preventDefault();
-        setDraggedOverColumn(stage);
-    };
-
-    const handleDragLeave = () => {
-        setDraggedOverColumn(null);
-    };
-
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, destinationStage: string) => {
-        e.preventDefault();
-        setDraggedOverColumn(null);
-        const entryId = parseInt(e.dataTransfer.getData('entryId'), 10);
-        const entryToMove = entries.find(p => p.id === entryId);
-
-        if (entryToMove) {
-            const currentStage = entryToMove.chips?.find(chip => WORKFLOW_STAGES.includes(chip)) || 'Backlog';
-
-            if (currentStage !== destinationStage) {
-                // Remove old stage chip and add new one provided it's not Backlog (implied default)
-                // Actually, explicit chips are better for stability.
-                const otherChips = entryToMove.chips?.filter(chip => !WORKFLOW_STAGES.includes(chip)) || [];
-
-                // Keep priority if it exists
-                const newChips = [...otherChips, destinationStage];
-
-                onUpdateEntry({
-                    ...entryToMove,
-                    chips: newChips
-                });
-            }
+  const columns = useMemo(() => {
+    const grouped: { [key: string]: FeedEntry[] } = {};
+    WORKFLOW_STAGES.forEach(stage => {
+        grouped[stage] = [];
+    });
+    entries.forEach(entry => {
+        const stage = entry.chips?.find(chip => WORKFLOW_STAGES.includes(chip));
+        if (stage && grouped[stage]) {
+            grouped[stage].push(entry);
+        } else {
+            grouped['Backlog'].push(entry);
         }
-    };
+    });
+    return grouped;
+  }, [entries]);
+  
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, entryId: number) => {
+    e.dataTransfer.setData('entryId', entryId.toString());
+  };
 
-    if (entries.length === 0) {
-        return <div className="text-center py-20 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-elevated"><p className="text-gray-500 dark:text-gray-400">No tasks found. Create a new task to get started.</p></div>;
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, stage: string) => {
+    e.preventDefault();
+    setDraggedOverColumn(stage);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverColumn(null);
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, destinationStage: string) => {
+    e.preventDefault();
+    setDraggedOverColumn(null);
+    const entryId = parseInt(e.dataTransfer.getData('entryId'), 10);
+    const entryToMove = entries.find(p => p.id === entryId);
+
+    if (entryToMove) {
+        const oldStage = entryToMove.chips?.find(chip => WORKFLOW_STAGES.includes(chip));
+
+        if(oldStage !== destinationStage){
+             const priorityChip = entryToMove.chips?.find(chip => TASK_PRIORITIES.includes(chip));
+             
+             const newChips = [destinationStage];
+             if(priorityChip) {
+                newChips.push(priorityChip);
+             } else {
+                newChips.push(entryToMove.type === EntryType.PRIORITY_TASK ? 'High' : 'Medium');
+             }
+
+             onUpdateEntry({
+                 ...entryToMove,
+                 chips: newChips
+             });
+        }
     }
+  };
 
-    return (
-        <div className="flex overflow-x-auto pb-4 gap-4 h-[calc(100vh-280px)] custom-scrollbar">
-            {WORKFLOW_STAGES.map(stage => (
-                <div
-                    key={stage}
-                    className="flex flex-col min-w-[280px] w-[280px] bg-gray-50 dark:bg-dark-elevated rounded-lg border border-gray-200 dark:border-dark-elevated max-h-full"
-                >
-                    <div className="p-3 border-b border-gray-200 dark:border-dark-elevated bg-gray-100/50 dark:bg-dark-elevated/50 rounded-t-lg z-10 flex items-center justify-between sticky top-0">
-                        <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm flex items-center">
-                            {stage}
-                        </h3>
-                        <span className="text-xs font-bold bg-white dark:bg-dark-card text-gray-500 dark:text-gray-400 rounded-full px-2 py-0.5 border border-gray-200 dark:border-dark-elevated shadow-sm">
-                            {columns[stage]?.length || 0}
-                        </span>
-                    </div>
+  const totalTasks = entries.length;
 
-                    <div
-                        className={`p-2 flex-1 overflow-y-auto custom-scrollbar transition-colors duration-200 ${draggedOverColumn === stage ? 'bg-primary/5 dark:bg-primary/10 ring-2 ring-inset ring-primary/20' : ''}`}
-                        onDragOver={(e) => handleDragOver(e, stage)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, stage)}
-                    >
-                        {columns[stage] && columns[stage].length > 0 ? (
-                            columns[stage].map(entry => (
-                                <KanbanCard key={entry.id} entry={entry} onDragStart={handleDragStart} onUpdateEntry={onUpdateEntry} users={users} />
-                            ))
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-center p-4">
-                                <p className="text-xs text-gray-400 dark:text-gray-600 italic dashed-border">Drop tasks</p>
-                            </div>
-                        )}
-                    </div>
+  if (totalTasks === 0) {
+    return <div className="text-center py-12"><p className="text-gray-500">No tasks available.</p></div>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {WORKFLOW_STAGES.map(stage => (
+        <div 
+            key={stage} 
+            className="flex flex-col bg-slate-50 rounded-lg border border-slate-200"
+        >
+          <div className="p-3 border-b border-slate-200 sticky top-0 bg-slate-50 rounded-t-lg z-10 flex-shrink-0">
+            <h3 className="font-bold text-gray-800 text-sm flex items-center">
+              {stage}
+              <span className="ml-2 text-xs font-semibold bg-slate-200 text-slate-600 rounded-full px-2 py-0.5">
+                {columns[stage]?.length || 0}
+              </span>
+            </h3>
+          </div>
+          <div 
+              className={`p-2 flex-grow overflow-y-auto transition-colors duration-300 min-h-[150px] ${draggedOverColumn === stage ? 'bg-primary-light' : ''}`}
+              onDragOver={(e) => handleDragOver(e, stage)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, stage)}
+          >
+             {columns[stage] && columns[stage].length > 0 ? (
+                columns[stage].map(entry => (
+                    <KanbanCard key={entry.id} entry={entry} onDragStart={handleDragStart} onUpdateEntry={onUpdateEntry} users={users} />
+                ))
+            ) : (
+                <div className="p-4 text-center text-xs text-gray-400">
+                    Drop tasks here
                 </div>
-            ))}
+            )}
+          </div>
         </div>
-    );
+      ))}
+    </div>
+  );
 };
 
 export default TasksKanbanView;

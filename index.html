@@ -1,118 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Track75</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: 'var(--color-primary)',
-            'primary-hover': 'var(--color-primary-hover)',
-            'primary-light': 'var(--color-primary-light)',
-            'primary-focus': 'var(--color-primary-focus)',
-            secondary: '#475569', // Slate-600
-            light: '#F8FAFC', // Slate-50
-            medium: '#E2E8F0', // Slate-200
-            dark: '#1E293B', // Slate-800 // Keep as legacy or specific use
-
-            // New Dark Mode Palette
-            'dark-bg': '#0E172A',
-            'dark-card': '#131B2C',
-            'dark-popup': '#1A2337',
-            'dark-elevated': '#1F2A40',
-            'dark-text': '#FFFFFF',
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Track75</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0080FE',
+              'primary-hover': '#0066CC',
+              'primary-light': '#E6F2FF',
+              'primary-focus': 'rgba(0, 128, 254, 0.5)',
+              secondary: '#475569', // Slate-600
+              light: '#F8FAFC', // Slate-50
+              medium: '#E2E8F0', // Slate-200
+              dark: '#1E293B', // Slate-800
+            },
+            animation: {
+              'scale-in': 'scale-in 0.2s ease-out',
+              'fade-in': 'fade-in 0.5s ease-out forwards',
+              'lightbox-fade-in': 'lightbox-fade-in 0.3s ease-out forwards',
+              'lightbox-fade-out': 'lightbox-fade-out 0.3s ease-out forwards',
+            },
+            keyframes: {
+              'scale-in': {
+                '0%': { transform: 'scale(0.95)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              },
+              'fade-in': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              'lightbox-fade-in': {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              'lightbox-fade-out': {
+                '0%': { opacity: '1' },
+                '100%': { opacity: '0' },
+              },
+            }
           },
-          animation: {
-            'scale-in': 'scale-in 0.2s ease-out',
-            'fade-in': 'fade-in 0.5s ease-out forwards',
-            'lightbox-fade-in': 'lightbox-fade-in 0.3s ease-out forwards',
-            'lightbox-fade-out': 'lightbox-fade-out 0.3s ease-out forwards',
-          },
-          keyframes: {
-            'scale-in': {
-              '0%': { transform: 'scale(0.95)', opacity: '0' },
-              '100%': { transform: 'scale(1)', opacity: '1' },
-            },
-            'fade-in': {
-              '0%': { opacity: '0', transform: 'translateY(10px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' },
-            },
-            'lightbox-fade-in': {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' },
-            },
-            'lightbox-fade-out': {
-              '0%': { opacity: '1' },
-              '100%': { opacity: '0' },
-            },
-          }
         },
-      },
-    }
-  </script>
-  <style>
-    :root {
-      --color-primary: #0080FE;
-      --color-primary-hover: #0066CC;
-      --color-primary-light: #E6F2FF;
-      --color-primary-focus: rgba(0, 128, 254, 0.5);
-    }
-
-    .auto-hide-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .auto-hide-scrollbar {
-      -ms-overflow-style: none;
-      /* IE and Edge */
-      scrollbar-width: none;
-      /* Firefox */
-    }
-
-    /* Global Scrollbar Formatting */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #CBD5E1;
-      /* Slate-300 */
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94A3B8;
-      /* Slate-400 */
-    }
-
-    /* Dark Mode Scrollbars */
-    .dark ::-webkit-scrollbar-thumb {
-      background: #334155;
-      /* Slate-700 */
-    }
-
-    .dark ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
-      /* Slate-600 */
-    }
-
-    /* Ensure track matches dark theme if needed, but transparent is usually best */
-    .dark ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-  </style>
+      }
+    </script>
+    <style>
+      .auto-hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .auto-hide-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -124,10 +68,8 @@
 }
 </script>
 </head>
-
-<body class="bg-light antialiased">
-  <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
-
+  <body class="bg-light antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

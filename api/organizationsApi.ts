@@ -6,10 +6,6 @@ export async function getOrganizations(): Promise<Organization[]> {
   return request<Organization[]>('/organizations');
 }
 
-export async function getOrganization(id: number): Promise<Organization> {
-  return request<Organization>(`/organizations/${id}`);
-}
-
 export async function createOrganization(org: Omit<Organization, 'id'>): Promise<Organization> {
   return request<Organization>('/organizations', {
     method: 'POST',

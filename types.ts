@@ -6,7 +6,7 @@ export enum EntryType {
   COMMENT = 'Comment',
   FILES = 'Files',
   ROADMAP_UPDATE = 'Roadmap Update',
-
+  CLIENT_UPDATE = 'Client Update',
   META_DATA_TRACK_INFO = 'Meta Data / Track Info',
   MEETING_NOTES = 'Meeting Notes',
   QUICK_NOTE = 'Quick Note',
@@ -39,7 +39,6 @@ export enum TrackLifecycle {
 
 export enum UserRole {
   SUPER_ADMIN = 'Super Admin',
-  ORGANIZATION_OWNER = 'Organization Owner',
   ADMIN = 'Admin',
   MANAGER = 'Manager',
   MEMBER = 'Member',
@@ -60,13 +59,16 @@ export interface Organization {
   name: string;
   description: string;
   status: OrganizationStatus;
-  brandColor?: string; // Hex code
-  accentColor?: string; // Hex code
-  logoUrl?: string;
-  useBranding?: boolean;
-  billingContactEmail?: string;
-  defaultTemplate?: string;
-  subscriptionDetails?: SubscriptionDetails;
+}
+
+export interface Client {
+  id: number;
+  name: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  organizationId: number;
+  trackIds?: number[];
 }
 
 export interface User {
@@ -79,76 +81,17 @@ export interface User {
   initials: string;
   status: UserStatus;
   organizationId: number;
-  themePreference?: 'light' | 'dark';
-  notificationPreferences?: NotificationPreferences;
-}
-
-export interface NotificationPreferences {
-  accountChanges: boolean;
-  newTeamMembers: boolean;
-  trackUpdates: boolean;
-  expiringSubscriptions: boolean;
-  deliveryMethod: 'in-app' | 'email' | 'both';
-}
-
-export interface Invoice {
-  id: string;
-  date: string;
-  amount: number;
-  status: 'paid' | 'open';
-  pdfUrl: string;
-}
-
-export interface SubscriptionDetails {
-  plan: 'Individual' | 'Organization';
-  status: 'active' | 'past_due' | 'canceled';
-  billingInterval: 'monthly' | 'yearly';
-  currentPeriodStart?: string;
-  currentPeriodEnd?: string;
-  nextBillingDate: string;
-  paymentMethod: {
-    last4: string;
-    brand: string;
-  };
-  invoices: Invoice[];
 }
 
 export type TrackPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
-export enum AccessLevel {
-  VIEW = 'view',
-  EDIT = 'edit',
-}
-
-// ... existing code ...
-export enum ShareType {
-  USER = 'user',
-  ORGANIZATION = 'organization',
-  EMAIL = 'email' // For pending invites
-}
-
-export interface ShareEntry {
-  type: ShareType | 'user' | 'organization'; // Keep string literals for backward compat if needed, or switch to Enum
-  id?: number; // Optional for email type
-  email?: string; // For email type
-  accessLevel: AccessLevel;
-}
-
-export interface PendingShare {
-  id: number;
-  trackId: number;
-  email: string;
-  accessLevel: AccessLevel;
-  invitedBy: number;
-  timestamp: string;
-}
-
 export interface Track {
-  // ... existing fields ...
   id: number;
-  name: string;
+  name:string;
+  clientName?: string;
+  clientId?: number;
   lifecycle: TrackLifecycle;
-  progress: number;
+  progress: number; // 0-100
   description: string;
   collaboratorIds: number[];
   startDate?: string;
@@ -159,9 +102,8 @@ export interface Track {
   template?: string;
   customTags?: string[];
   avatarUrl?: string;
-  sharedWith?: ShareEntry[];
-  // pendingShares is likely stored separately in mock DB, but good to have if we return it
 }
+
 export interface Reaction {
   [emoji: string]: number[]; // emoji: list of user IDs
 }
@@ -172,17 +114,6 @@ export interface Comment {
   timestamp: string;
   content: string;
   replies?: Comment[];
-}
-
-export interface Notification {
-  id: number;
-  userId: number;
-  type: 'invite' | 'update' | 'system';
-  content: string;
-  read: boolean;
-  timestamp: string;
-  actionUrl?: string;
-  metadata?: any;
 }
 
 export interface FeedEntry {
@@ -203,5 +134,4 @@ export interface FeedEntry {
   subtasks?: { id: number; text: string; completed: boolean }[];
 }
 
-export type View = 'FEED' | 'TRACKS' | 'TRACK_DETAIL' | 'USERS' | 'USER_DETAIL' | 'DASHBOARD' | 'SETTINGS' | 'TRACK_REVIEW' | 'ORGANIZATIONS' | 'KANBAN' | 'BILLING';
-
+export type View = 'FEED' | 'TRACKS' | 'TRACK_DETAIL' | 'USERS' | 'USER_DETAIL' | 'DASHBOARD' | 'SETTINGS' | 'TRACK_REVIEW' | 'ORGANIZATIONS' | 'KANBAN' | 'CLIENTS' | 'CLIENT_DETAIL';
