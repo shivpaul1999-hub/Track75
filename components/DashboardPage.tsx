@@ -1,15 +1,16 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Track, FeedEntry, View, TrackLifecycle, User } from '../types';
 import Icon from './Icon';
 import AddTrackModal from './AddTrackModal';
+import { useToast } from './ToastContext';
 import { getTracks } from '../api/tracksApi';
 import { getFeedEntries } from '../api/feedApi';
 import { getUsers } from '../api/usersApi';
+import { getTemplates, TemplateConfig } from '../api/metaApi';
 
 interface DashboardPageProps {
-  currentUser: User;
-  onNavigate: (view: View, id?: number) => void;
+    currentUser: User;
+    onNavigate: (view: View, id?: number) => void;
 }
 
 const SummaryCard: React.FC<{ title: string, count: number, icon: string, color: string, onClick: () => void }> = ({ title, count, icon, color, onClick }) => (
@@ -27,15 +28,6 @@ const SummaryCard: React.FC<{ title: string, count: number, icon: string, color:
 const getTemplateFromDescription = (description: string): string => {
     const match = description?.match(/^\[Template: (.*?)\]/);
     return match ? match[1] : 'General';
-};
-
-const getTemplateStyle = (template: string): { bg: string; text: string; border: string } => {
-    const normalized = template.toLowerCase();
-    if (normalized.includes('creative')) return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' };
-    if (normalized.includes('project management')) return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
-    if (normalized.includes('crm') || normalized.includes('relationship')) return { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' };
-    if (normalized.includes('health') || normalized.includes('wellness')) return { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' };
-    return { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
 };
 
 const formatRelativeTime = (dateString: string) => {
@@ -57,11 +49,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
     const [tracks, setTracks] = useState<Track[]>([]);
     const [feedEntries, setFeedEntries] = useState<FeedEntry[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [templates, setTemplates] = useState<TemplateConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddTrackModalOpen, setIsAddTrackModalOpen] = useState(false);
     const [pinnedTrackIds, setPinnedTrackIds] = useState<number[]>([]);
     // Template filter is now primarily for the "All" button locally, as specific cards navigate away
     const [templateFilter, setTemplateFilter] = useState<string>('All');
+
+    const { showToast } = useToast();
 
     // Load pinned tracks from local storage
     useEffect(() => {
@@ -74,16 +69,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [fetchedTracks, fetchedEntries, fetchedUsers] = await Promise.all([
+            const [fetchedTracks, fetchedEntries, fetchedUsers, fetchedTemplates] = await Promise.all([
                 getTracks(),
                 getFeedEntries(),
-                getUsers()
+                getUsers(),
+                getTemplates()
             ]);
             setTracks(fetchedTracks);
             setFeedEntries(fetchedEntries);
             setUsers(fetchedUsers);
-        } catch (error) {
+            setTemplates(fetchedTemplates);
+        } catch (error: any) {
             console.error("Error fetching dashboard data", error);
+            showToast(error.message || "Failed to load dashboard data", 'error');
         } finally {
             setLoading(false);
         }
@@ -158,7 +156,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
                 <div className="flex items-center space-x-3">
                     <button
                         onClick={() => setIsAddTrackModalOpen(true)}
@@ -173,11 +171,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <SummaryCard title="My Open Tracks" count={trackSummary.open} icon="deployment-release" color="bg-gradient-to-br from-primary to-sky-500" onClick={() => onNavigate('KANBAN')} />
                 <SummaryCard title="My Total Tracks" count={trackSummary.total} icon="tracks" color="bg-gradient-to-br from-indigo-600 to-purple-500" onClick={() => onNavigate('KANBAN')} />
-                
-                <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 p-4 shadow-sm flex flex-col justify-center items-center transition-all hover:shadow-md text-center">
+
+                <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-dark-card rounded-lg border border-emerald-100 dark:border-emerald-900/30 p-4 shadow-sm flex flex-col justify-center items-center transition-all hover:shadow-md text-center">
                     <Icon name="task" className="w-10 h-10 text-emerald-500 mb-2" />
-                    <p className="text-3xl font-bold text-gray-800">{recentActivity.length}</p>
-                    <p className="text-sm font-medium text-emerald-700">Recent Activities</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-white">{recentActivity.length}</p>
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Recent Activities</p>
                 </div>
             </div>
 
@@ -185,21 +183,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
                 <div className="flex space-x-4">
                     <button
                         onClick={() => setTemplateFilter('All')}
-                        className={`flex-shrink-0 flex items-center px-4 py-3 rounded-lg border transition-colors min-w-[120px] ${templateFilter === 'All' ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'}`}
+                        className={`flex-shrink-0 flex items-center px-4 py-3 rounded-lg border transition-colors min-w-[120px] ${templateFilter === 'All' ? 'bg-gray-100 dark:bg-dark-elevated border-gray-300 dark:border-gray-500' : 'bg-white dark:bg-dark-card border-gray-200 dark:border-dark-elevated'}`}
                     >
-                        <span className="text-sm font-bold text-gray-700">All</span>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">All</span>
                     </button>
                     {templateStats.map(([template, count]) => {
-                        const style = getTemplateStyle(template);
+                        const templateConfig = templates.find(t => t.name === template);
+                        const colors = templateConfig?.colors || { text: '#374151', bg: '#F3F4F6' };
+
                         return (
                             <button
                                 key={template}
                                 onClick={() => handleTemplateClick(template)}
-                                className={`flex-shrink-0 flex items-center px-4 py-3 rounded-lg border ${style.border} ${style.bg} hover:shadow-sm transition-all min-w-[180px] hover:scale-[1.02]`}
+                                className={`flex-shrink-0 flex items-center px-4 py-3 rounded-lg border hover:shadow-sm transition-all min-w-[180px] hover:scale-[1.02] dark:border-dark-elevated dark:!bg-dark-card`}
+                                style={{
+                                    backgroundColor: colors.bg,
+                                    borderColor: 'rgba(0,0,0,0.05)'
+                                }}
                             >
                                 <div className="flex-grow text-left">
-                                    <span className={`block text-sm font-bold ${style.text}`}>{template}</span>
-                                    <span className="text-xs text-gray-500 font-medium">{count} tracks</span>
+                                    <span
+                                        className="block text-sm font-bold dark:!text-white"
+                                        style={{ color: colors.text }}
+                                    >
+                                        {template}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{count} tracks</span>
                                 </div>
                             </button>
                         )
@@ -208,38 +217,47 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
+
                 <div className="flex flex-col space-y-4">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center">
                         My Tracks
                     </h2>
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-grow">
+                    <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-elevated shadow-sm overflow-hidden flex-grow">
                         {displayTracks.length > 0 ? (
-                            <div className="divide-y divide-gray-200">
+                            <div className="divide-y divide-gray-200 dark:divide-dark-elevated">
                                 {displayTracks.map(track => {
                                     const template = track.template || getTemplateFromDescription(track.description);
-                                    const style = getTemplateStyle(template);
+                                    const templateConfig = templates.find(t => t.name === template);
+                                    const colors = templateConfig?.colors || { text: '#374151', bg: '#F3F4F6' };
                                     const isPinned = pinnedTrackIds.includes(track.id);
                                     return (
-                                        <div 
-                                            key={track.id} 
+                                        <div
+                                            key={track.id}
                                             onClick={() => onNavigate('TRACK_DETAIL', track.id)}
-                                            className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between group relative"
+                                            className="p-4 hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors cursor-pointer flex items-center justify-between group relative"
                                         >
                                             <div className="flex items-center space-x-3 overflow-hidden flex-grow">
                                                 {track.avatarUrl ? (
                                                     <img src={track.avatarUrl} alt={track.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                                                 ) : (
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${style.bg}`}>
-                                                        <span className={`font-bold text-xs ${style.text}`}>{track.name.substring(0, 2).toUpperCase()}</span>
+                                                    <div
+                                                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                                        style={{ backgroundColor: colors.bg }}
+                                                    >
+                                                        <span
+                                                            className="font-bold text-xs"
+                                                            style={{ color: colors.text }}
+                                                        >
+                                                            {track.name.substring(0, 2).toUpperCase()}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-grow">
                                                     <div className="flex items-center">
-                                                        <h3 className="text-sm font-bold text-gray-900 truncate group-hover:text-primary transition-colors mr-2">{track.name}</h3>
+                                                        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors mr-2">{track.name}</h3>
                                                         {isPinned && <Icon name="pin" className="w-3 h-3 text-primary flex-shrink-0" fill="currentColor" />}
                                                     </div>
-                                                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                                    <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                                                         <span className={`inline-block w-2 h-2 rounded-full ${track.lifecycle === TrackLifecycle.OPEN ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                                                         <span>{track.lifecycle}</span>
                                                         <span>&bull;</span>
@@ -247,27 +265,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="flex items-center space-x-1 pl-2">
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); handleTogglePin(track.id); }}
-                                                    className={`p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 ${isPinned ? 'text-primary opacity-100' : 'text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
+                                                    className={`p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 ${isPinned ? 'text-primary opacity-100' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-dark-elevated hover:text-gray-600 dark:hover:text-gray-300'}`}
                                                     title={isPinned ? "Unpin track" : "Pin track"}
                                                 >
                                                     <Icon name="pin" className="w-4 h-4" fill={isPinned ? "currentColor" : "none"} />
                                                 </button>
-                                                <Icon name="chevron-right" className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors flex-shrink-0" />
+                                                <Icon name="chevron-right" className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-primary transition-colors flex-shrink-0" />
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <div className="p-8 text-center text-gray-500">
+                            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                                 No tracks found. Create one to get started.
                             </div>
                         )}
-                        <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
+                        <div className="p-3 bg-gray-50 dark:bg-dark-elevated border-t border-gray-200 dark:border-dark-elevated text-center">
                             <button onClick={() => onNavigate('KANBAN')} className="text-sm font-semibold text-primary hover:underline">
                                 View All Tracks &rarr;
                             </button>
@@ -276,16 +294,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
                 </div>
 
                 <div className="flex flex-col space-y-4">
-                    <h2 className="text-xl font-bold text-gray-800">Recent Activity</h2>
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-grow">
-                        <ul className="divide-y divide-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Recent Activity</h2>
+                    <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-elevated shadow-sm overflow-hidden flex-grow">
+                        <ul className="divide-y divide-gray-200 dark:divide-dark-elevated">
                             {recentActivity.map(entry => {
                                 const author = users.find(u => u.id === entry.authorId);
                                 const track = tracks.find(p => p.id === entry.trackId);
                                 if (!author || !track) return null;
 
                                 return (
-                                    <li key={entry.id} className="p-4 flex items-start space-x-3 hover:bg-gray-50 transition-colors">
+                                    <li key={entry.id} className="p-4 flex items-start space-x-3 hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors">
                                         <div className="flex-shrink-0 mt-1">
                                             {author.avatarUrl ? (
                                                 <img src={author.avatarUrl} alt={author.name} className="w-8 h-8 rounded-full" />
@@ -294,23 +312,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-gray-900">
+                                            <p className="text-sm text-gray-900 dark:text-gray-200">
                                                 <span className="font-semibold">{author.name}</span>
-                                                <span className="text-gray-600"> posted in </span>
+                                                <span className="text-gray-600 dark:text-gray-400"> posted in </span>
                                                 <span className="font-semibold text-primary cursor-pointer hover:underline" onClick={() => onNavigate('TRACK_DETAIL', track.id)}>{track.name}</span>
                                             </p>
-                                            <p className="text-xs text-gray-500 mt-0.5 truncate">{entry.content}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{entry.content}</p>
                                         </div>
                                         <time className="text-xs text-gray-400 whitespace-nowrap">{formatRelativeTime(entry.timestamp)}</time>
                                     </li>
                                 );
                             })}
                             {recentActivity.length === 0 && (
-                                <li className="p-8 text-center text-gray-500">No recent activity.</li>
+                                <li className="p-8 text-center text-gray-500 dark:text-gray-400">No recent activity.</li>
                             )}
                         </ul>
-                        <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
-                             <button onClick={() => onNavigate('FEED')} className="text-sm font-semibold text-primary hover:underline">
+                        <div className="p-3 bg-gray-50 dark:bg-dark-elevated border-t border-gray-200 dark:border-dark-elevated text-center">
+                            <button onClick={() => onNavigate('FEED')} className="text-sm font-semibold text-primary hover:underline">
                                 View Full Feed &rarr;
                             </button>
                         </div>
@@ -319,22 +337,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
 
             </div>
             {isAddTrackModalOpen && (
-                <AddTrackModal 
-                    users={users} 
+                <AddTrackModal
+                    users={users}
                     owners={users.filter(u => u.role === 'Admin' || u.role === 'Manager')}
                     entryTags={[]}
-                    onAddTag={() => {}}
-                    onClose={() => setIsAddTrackModalOpen(false)} 
+                    onAddTag={() => { }}
+                    onClose={() => setIsAddTrackModalOpen(false)}
                     onSave={async (newTrackData, entryData) => {
                         try {
                             const { createTrack } = await import('../api/tracksApi');
-                            const createdTrack = await createTrack({ 
-                                ...newTrackData, 
+                            const createdTrack = await createTrack({
+                                ...newTrackData,
                                 organizationId: currentUser.organizationId,
                                 progress: 0,
                                 collaboratorIds: newTrackData.ownerId ? [newTrackData.ownerId] : []
                             });
-                            
+
                             if (entryData) {
                                 const { createFeedEntry } = await import('../api/feedApi');
                                 await createFeedEntry({
@@ -346,10 +364,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNavigate }
                                     comments: []
                                 });
                             }
-                            
+
                             setIsAddTrackModalOpen(false);
                             onNavigate('TRACK_DETAIL', createdTrack.id);
-                        } catch (e) { console.error(e); }
+                            showToast('Successfully Created Track', 'success');
+                        } catch (e: any) {
+                            console.error(e);
+                            showToast(e.message || 'Failed to create track', 'error');
+                        }
                     }}
                 />
             )}
